@@ -11,9 +11,10 @@ import { useLoginMutation } from "@/store";
 interface LoginFormProps {
   onSuccess: () => void;
   onSwitchToSignup: () => void;
+  onForgotPassword: () => void;
 }
 
-export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
+export function LoginForm({ onSuccess, onSwitchToSignup, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -89,6 +90,15 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
                 )}
               </button>
             </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-sm text-primary hover:underline cursor-pointer"
+            >
+              Forgot password?
+            </button>
           </div>
           {error && (
             <div className="text-sm text-red-500 text-center">{error}</div>

@@ -57,16 +57,45 @@ export interface LoginResponse {
   };
 }
 
+export interface PasswordResetRequestRequest {
+  email: string;
+}
+
+export interface PasswordResetRequestResponse {
+  status: boolean;
+  message: string;
+}
+
+export interface PasswordResetRequest {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+
+export interface PasswordResetResponse {
+  status: boolean;
+  message: string;
+}
+
 /**
  * User Types
  */
 
 export interface User {
-  id: string;
+  id?: string;
   name: string;
   email: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface UserProfileResponse {
+  status: boolean;
+  message: string;
+  data: {
+    name: string;
+    email: string;
+  };
 }
 
 /**

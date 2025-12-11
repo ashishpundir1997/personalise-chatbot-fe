@@ -6,6 +6,10 @@ import type {
   LoginResponse,
   VerifyEmailRequest,
   VerifyEmailResponse,
+  PasswordResetRequestRequest,
+  PasswordResetRequestResponse,
+  PasswordResetRequest,
+  PasswordResetResponse,
 } from '@/lib/types';
 
 export const authApi = baseApi.injectEndpoints({
@@ -59,6 +63,43 @@ export const authApi = baseApi.injectEndpoints({
         }
       },
     }),
+    
+    logout: builder.mutation<void, void>({
+      query: () => ({
+        url: '/auth/logout',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Auth', 'User'],
+      async onQueryStarted(arg, { queryFulfilled }) {
+        // Clear localStorage immediately
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+        }
+        try {
+          await queryFulfilled;
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+      },
+    }),
+    
+    passwordResetRequest: builder.mutation<PasswordResetRequestResponse, PasswordResetRequestRequest>({
+      query: (data) => ({
+        url: '/auth/password-reset-request',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+    
+    passwordReset: builder.mutation<PasswordResetResponse, PasswordResetRequest>({
+      query: (data) => ({
+        url: '/auth/password-reset',
+        method: 'POST',
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -66,4 +107,7 @@ export const {
   useRegisterMutation,
   useVerifyEmailMutation,
   useLoginMutation,
+  useLogoutMutation,
+  usePasswordResetRequestMutation,
+  usePasswordResetMutation,
 } = authApi;
