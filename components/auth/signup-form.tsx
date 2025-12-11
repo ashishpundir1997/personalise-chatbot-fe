@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, UserPlus, User } from "lucide-react";
+import { Mail, Lock, UserPlus, User, Eye, EyeOff } from "lucide-react";
 import { useRegisterMutation } from "@/store";
 
 interface SignupFormProps {
@@ -17,6 +17,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   
   const [register, { isLoading }] = useRegisterMutation();
@@ -90,14 +91,25 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="signup-password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
                 required
                 minLength={6}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
             <p className="text-xs text-muted-foreground">
               Password must be at least 6 characters
@@ -106,7 +118,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           {error && (
             <div className="text-sm text-red-500 text-center">{error}</div>
           )}
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
             {isLoading ? (
               "Creating account..."
             ) : (
@@ -123,7 +135,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
           Already have an account?{" "}
           <button
             onClick={onSwitchToLogin}
-            className="text-primary hover:underline font-medium"
+            className="text-primary hover:underline font-medium cursor-pointer"
           >
             Login
           </button>

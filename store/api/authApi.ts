@@ -29,11 +29,9 @@ export const authApi = baseApi.injectEndpoints({
         try {
           const { data } = await queryFulfilled;
           // Store token and user in localStorage
-          if (typeof window !== 'undefined' && data.accessToken) {
-            localStorage.setItem('authToken', data.accessToken);
-            if (data.user) {
-              localStorage.setItem('user', JSON.stringify(data.user));
-            }
+          if (typeof window !== 'undefined' && data.data?.access_token) {
+            localStorage.setItem('authToken', data.data.access_token);
+            localStorage.setItem('refreshToken', data.data.refresh_token);
           }
         } catch (error) {
           console.error('Email verification failed:', error);
@@ -51,12 +49,10 @@ export const authApi = baseApi.injectEndpoints({
       async onQueryStarted(arg, { queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          // Store token and user in localStorage
-          if (typeof window !== 'undefined' && data.accessToken) {
-            localStorage.setItem('authToken', data.accessToken);
-            if (data.user) {
-              localStorage.setItem('user', JSON.stringify(data.user));
-            }
+          // Store token in localStorage
+          if (typeof window !== 'undefined' && data.data.access_token) {
+            localStorage.setItem('authToken', data.data.access_token);
+            localStorage.setItem('refreshToken', data.data.refresh_token);
           }
         } catch (error) {
           console.error('Login failed:', error);

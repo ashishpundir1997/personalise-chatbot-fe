@@ -20,8 +20,9 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
+  status: boolean;
   message: string;
-  email: string;
+  email?: string;
 }
 
 export interface VerifyEmailRequest {
@@ -30,9 +31,14 @@ export interface VerifyEmailRequest {
 }
 
 export interface VerifyEmailResponse {
-  message?: string;
-  accessToken?: string;
-  user?: User;
+  status: boolean;
+  message: string;
+  data?: {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
 }
 
 export interface LoginRequest {
@@ -41,9 +47,14 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  message?: string;
-  accessToken: string;
-  user: User;
+  status: boolean;
+  message: string;
+  data: {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
 }
 
 /**

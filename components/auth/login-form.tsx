@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 import { useLoginMutation } from "@/store";
 
 interface LoginFormProps {
@@ -16,6 +16,7 @@ interface LoginFormProps {
 export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   
   const [login, { isLoading }] = useLoginMutation();
@@ -69,19 +70,30 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
           {error && (
             <div className="text-sm text-red-500 text-center">{error}</div>
           )}
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
             {isLoading ? (
               "Logging in..."
             ) : (
@@ -98,7 +110,7 @@ export function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
           Don&apos;t have an account?{" "}
           <button
             onClick={onSwitchToSignup}
-            className="text-primary hover:underline font-medium"
+            className="text-primary hover:underline font-medium cursor-pointer"
           >
             Sign up
           </button>

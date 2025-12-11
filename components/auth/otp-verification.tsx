@@ -134,7 +134,7 @@ export function OtpVerification({ email, onSuccess }: OtpVerificationProps) {
             <div className="text-sm text-red-500 text-center">{error}</div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
             {isLoading ? (
               "Verifying..."
             ) : (
@@ -149,7 +149,7 @@ export function OtpVerification({ email, onSuccess }: OtpVerificationProps) {
             <button
               type="button"
               onClick={handleResendOtp}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             >
               Didn&apos;t receive the code?{" "}
               <span className="font-medium">Resend OTP</span>
