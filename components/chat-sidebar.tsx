@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +10,12 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { MessageSquare, Plus, User as UserIcon, Trash2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { MessageSquare, Plus, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
 import { useGetUserProfileQuery, useGetConversationsQuery, useDeleteConversationMutation } from "@/store";
@@ -24,23 +30,31 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
   const { data: userProfile, isLoading: isLoadingProfile } = useGetUserProfileQuery();
   const { data: conversations, isLoading: isLoadingChats } = useGetConversationsQuery({ limit: 20, offset: 0 });
   const [deleteConversation, { isLoading: isDeleting }] = useDeleteConversationMutation();
+  const [deletePopoverOpen, setDeletePopoverOpen] = useState<string | null>(null);
 
-  const handleDelete = async (e: React.MouseEvent, conversationId: string) => {
-    e.stopPropagation(); // Prevent selecting the chat when clicking delete
-    
-    if (confirm('Are you sure you want to delete this conversation?')) {
-      try {
-        await deleteConversation({ conversation_id: conversationId }).unwrap();
-        
-        // If the deleted chat was currently selected, switch to new chat
-        if (currentChatId === conversationId) {
-          onNewChat();
-        }
-      } catch (error) {
-        console.error('Failed to delete conversation:', error);
-        alert('Failed to delete conversation. Please try again.');
+  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    setDeletePopoverOpen(conversationId);
+  };
+
+  const handleDeleteConfirm = async (conversationId: string) => {
+    try {
+      await deleteConversation({ conversation_id: conversationId }).unwrap();
+      
+      // If the deleted chat was currently selected, switch to new chat
+      if (currentChatId === conversationId) {
+        onNewChat();
       }
+      
+      setDeletePopoverOpen(null);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      alert('Failed to delete conversation. Please try again.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeletePopoverOpen(null);
   };
 
   // Format date for display
@@ -89,7 +103,7 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
           <SidebarMenu>
             {conversations.data.conversations.map((chat) => (
               <SidebarMenuItem key={chat.conversation_id}>
-                <div className="relative group">
+                <div className="relative group/item">
                   <SidebarMenuButton
                     onClick={() => onSelectChat(chat.conversation_id)}
                     isActive={currentChatId === chat.conversation_id}
@@ -104,15 +118,60 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
                       </span>
                     </div>
                   </SidebarMenuButton>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => handleDelete(e, chat.conversation_id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
-                    disabled={isDeleting}
+                  
+                  <Popover
+                    open={deletePopoverOpen === chat.conversation_id}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setDeletePopoverOpen(null);
+                      }
+                    }}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDeleteClick(e, chat.conversation_id)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <h4 className="text-sm font-semibold">Delete Conversation</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Are you sure you want to delete this conversation? This action cannot be undone.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDeleteCancel}
+                            disabled={isDeleting}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteConfirm(chat.conversation_id)}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </SidebarMenuItem>
             ))}
