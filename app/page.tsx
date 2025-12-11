@@ -13,12 +13,18 @@ export default function Home() {
     setCurrentChatId(conversationId);
   };
 
+  const handleNewChat = () => {
+    console.log('Starting new chat');
+    setCurrentChatId(null);
+  };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <ChatSidebar 
           currentChatId={currentChatId}
           onSelectChat={setCurrentChatId}
+          onNewChat={handleNewChat}
         />
         <ChatArea 
           chatId={currentChatId} 

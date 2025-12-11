@@ -9,18 +9,18 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { MessageSquare, Plus, History, User as UserIcon } from "lucide-react";
+import { MessageSquare, Plus, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { LogoutButton } from "@/components/logout-button";
 import { useGetUserProfileQuery, useGetConversationsQuery } from "@/store";
 
 interface ChatSidebarProps {
   currentChatId: string | null;
   onSelectChat: (chatId: string) => void;
+  onNewChat: () => void;
 }
 
-export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
+export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSidebarProps) {
   const { data: userProfile, isLoading: isLoadingProfile } = useGetUserProfileQuery();
   const { data: conversations, isLoading: isLoadingChats } = useGetConversationsQuery({ limit: 20, offset: 0 });
 
@@ -50,19 +50,13 @@ export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
           <MessageSquare className="h-5 w-5" />
           <h2 className="text-lg font-semibold">Chats</h2>
         </div>
-        <Button size="sm" className="w-full">
+        <Button size="sm" className="w-full" onClick={onNewChat}>
           <Plus className="h-4 w-4 mr-2" />
           New Chat
         </Button>
       </SidebarHeader>
 
       <SidebarContent className="p-2">
-        <div className="mb-2 px-2 py-1 text-xs text-muted-foreground flex items-center gap-2">
-          <History className="h-3 w-3" />
-          Chat History
-        </div>
-        <Separator className="mb-2" />
-        
         {isLoadingChats ? (
           <div className="space-y-2 px-2 py-4">
             {[1, 2, 3].map((i) => (
@@ -81,19 +75,13 @@ export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
                   isActive={currentChatId === chat.conversation_id}
                   className="w-full h-auto py-3 px-3"
                 >
-                  <div className="flex flex-col items-start gap-1.5 w-full">
-                    <div className="flex items-start justify-between w-full gap-2">
-                      <span className="font-medium text-sm truncate flex-1">
-                        {chat.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatDate(chat.last_activity)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>{chat.message_count} message{chat.message_count !== 1 ? "s" : ""}</span>
-                    </div>
+                  <div className="flex items-start justify-between w-full gap-2">
+                    <span className="font-medium text-sm truncate flex-1">
+                      {chat.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                      {formatDate(chat.last_activity)}
+                    </span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
