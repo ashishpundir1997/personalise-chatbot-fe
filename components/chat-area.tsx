@@ -124,9 +124,21 @@ export function ChatArea({ chatId, onConversationCreated }: ChatAreaProps) {
               streamingContentRef.current = "";
               setIsStreaming(false);
               
-              // Refetch conversation to get updated data
+              // Refetch conversation to get updated data, then clear local messages
               if (newConversationId) {
-                setTimeout(() => refetch(), 500);
+                setTimeout(() => {
+                  refetch().then(() => {
+                    // Clear the new messages for this conversation after refetch
+                    // since they're now in the fetched data
+                    setNewMessages(prev => {
+                      const updated = { ...prev };
+                      if (newConversationId) {
+                        delete updated[newConversationId];
+                      }
+                      return updated;
+                    });
+                  });
+                }, 500);
               }
             },
             onSummary: (messageCount) => {

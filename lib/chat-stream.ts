@@ -44,11 +44,17 @@ export async function streamChatResponse(
     }
 
     let buffer = '';
+    let conversationId = '';
 
     while (true) {
       const { done, value } = await reader.read();
       
-      if (done) break;
+      if (done) {
+        // Stream is complete, call onDone callback
+        console.log('Stream reading complete, calling onDone');
+        callbacks.onDone?.(conversationId);
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -72,11 +78,15 @@ export async function streamChatResponse(
             // Determine event type from previous line or infer from data
             if (data.conversation_id && data.type === undefined && data.text === undefined && data.message_count === undefined) {
               // This is likely a start, complete, or done event
+              conversationId = data.conversation_id;
               if (callbacks.onStart) {
                 callbacks.onStart(data.conversation_id);
               }
             } else if (data.type === 'text_delta' && data.text) {
               callbacks.onContent?.(data.text);
+            } else if (data.type === 'complete' && data.conversation_id) {
+              conversationId = data.conversation_id;
+              callbacks.onComplete?.(data.conversation_id);
             } else if (data.message_count !== undefined) {
               callbacks.onSummary?.(data.message_count);
             }
