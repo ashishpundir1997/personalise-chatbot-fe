@@ -42,6 +42,26 @@ export function ChatArea({ chatId, onConversationCreated }: ChatAreaProps) {
     ...currentNewMessages,
   ];
 
+  // Clear all state when chatId changes to null (new chat)
+  useEffect(() => {
+    if (chatId === null) {
+      // Use setTimeout to avoid cascading renders
+      const timer = setTimeout(() => {
+        setInputValue("");
+        setStreamingContent("");
+        streamingContentRef.current = "";
+        setIsStreaming(false);
+        setNewMessages(prev => {
+          const updated = { ...prev };
+          delete updated['new'];
+          return updated;
+        });
+      }, 0);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [chatId]);
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

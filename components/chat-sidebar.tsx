@@ -9,10 +9,10 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { MessageSquare, Plus, User as UserIcon } from "lucide-react";
+import { MessageSquare, Plus, User as UserIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
-import { useGetUserProfileQuery, useGetConversationsQuery } from "@/store";
+import { useGetUserProfileQuery, useGetConversationsQuery, useDeleteConversationMutation } from "@/store";
 
 interface ChatSidebarProps {
   currentChatId: string | null;
@@ -23,6 +23,25 @@ interface ChatSidebarProps {
 export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSidebarProps) {
   const { data: userProfile, isLoading: isLoadingProfile } = useGetUserProfileQuery();
   const { data: conversations, isLoading: isLoadingChats } = useGetConversationsQuery({ limit: 20, offset: 0 });
+  const [deleteConversation, { isLoading: isDeleting }] = useDeleteConversationMutation();
+
+  const handleDelete = async (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation(); // Prevent selecting the chat when clicking delete
+    
+    if (confirm('Are you sure you want to delete this conversation?')) {
+      try {
+        await deleteConversation({ conversation_id: conversationId }).unwrap();
+        
+        // If the deleted chat was currently selected, switch to new chat
+        if (currentChatId === conversationId) {
+          onNewChat();
+        }
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+        alert('Failed to delete conversation. Please try again.');
+      }
+    }
+  };
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -70,20 +89,31 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
           <SidebarMenu>
             {conversations.data.conversations.map((chat) => (
               <SidebarMenuItem key={chat.conversation_id}>
-                <SidebarMenuButton
-                  onClick={() => onSelectChat(chat.conversation_id)}
-                  isActive={currentChatId === chat.conversation_id}
-                  className="w-full h-auto py-3 px-3"
-                >
-                  <div className="flex items-start justify-between w-full gap-2">
-                    <span className="font-medium text-sm truncate flex-1">
-                      {chat.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                      {formatDate(chat.last_activity)}
-                    </span>
-                  </div>
-                </SidebarMenuButton>
+                <div className="relative group">
+                  <SidebarMenuButton
+                    onClick={() => onSelectChat(chat.conversation_id)}
+                    isActive={currentChatId === chat.conversation_id}
+                    className="w-full h-auto py-3 px-3 pr-10"
+                  >
+                    <div className="flex items-start justify-between w-full gap-2">
+                      <span className="font-medium text-sm truncate flex-1">
+                        {chat.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                        {formatDate(chat.last_activity)}
+                      </span>
+                    </div>
+                  </SidebarMenuButton>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleDelete(e, chat.conversation_id)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>

@@ -29,10 +29,18 @@ export const chatApi = baseApi.injectEndpoints({
       }),
       providesTags: (result, error, arg) => [{ type: 'Chat', id: arg.conversation_id }],
     }),
+    deleteConversation: builder.mutation<{ message: string }, { conversation_id: string }>({
+      query: ({ conversation_id }) => ({
+        url: `/chat/conversation/${conversation_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Chat'],
+    }),
   }),
 });
 
 export const {
   useGetConversationsQuery,
   useGetConversationDetailsQuery,
+  useDeleteConversationMutation,
 } = chatApi;
