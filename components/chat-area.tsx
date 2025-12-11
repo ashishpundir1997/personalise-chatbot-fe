@@ -1,31 +1,151 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, MessageSquare, Bot, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useGetConversationDetailsQuery } from "@/store/api/chatApi";
+import { useGetUserProfileQuery } from "@/store/api/userApi";
+import { streamChatResponse } from "@/lib/chat-stream";
+import type { Message } from "@/lib/types";
 
 interface ChatAreaProps {
   chatId: string | null;
+  onConversationCreated?: (conversationId: string) => void;
 }
 
-export function ChatArea({ chatId }: ChatAreaProps) {
+export function ChatArea({ chatId, onConversationCreated }: ChatAreaProps) {
   const [inputValue, setInputValue] = useState("");
+  const [newMessages, setNewMessages] = useState<Record<string, Message[]>>({});
+  const [streamingContent, setStreamingContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamingContentRef = useRef<string>("");
+
+  // Fetch user profile to get user_id
+  const { data: userProfile } = useGetUserProfileQuery();
 
   // Fetch conversation details when chatId is available
-  const { data: conversationData, isLoading, error } = useGetConversationDetailsQuery(
+  const { data: conversationData, isLoading, error, refetch } = useGetConversationDetailsQuery(
     { conversation_id: chatId!, include_messages: true, limit: 25 },
     { skip: !chatId }
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Get messages for current chat
+  const currentChatKey = chatId || 'new';
+  const currentNewMessages = newMessages[currentChatKey] || [];
+  
+  // Combine fetched messages with new messages
+  const allMessages = [
+    ...(conversationData?.data?.messages || []),
+    ...currentNewMessages,
+  ];
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [allMessages.length, streamingContent]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      console.log("Message sent:", inputValue);
-      // Handle message submission here
+    if (inputValue.trim() && !isStreaming) {
+      const userMessage = inputValue.trim();
+      // Get user_id from profile or localStorage fallback
+      const userId = userProfile?.data?.user_id || localStorage.getItem('userId') || 'default-user';
+      
+      // Add user message to new messages for this chat
+      const newUserMessage: Message = {
+        role: 'user',
+        content: userMessage,
+        metadata: {},
+        created_at: new Date().toISOString(),
+      };
+      
+      setNewMessages(prev => ({
+        ...prev,
+        [currentChatKey]: [...(prev[currentChatKey] || []), newUserMessage],
+      }));
       setInputValue("");
+      setIsStreaming(true);
+      setStreamingContent("");
+      streamingContentRef.current = "";
+
+      let newConversationId = chatId;
+
+      try {
+        await streamChatResponse(
+          {
+            messages: [
+              {
+                role: 'user',
+                content: userMessage,
+              },
+            ],
+            stream: true,
+            user_id: userId,
+            ...(chatId && { conversation_id: chatId }),
+          },
+          {
+            onStart: (conversationId) => {
+              console.log('Stream started:', conversationId);
+              if (!chatId) {
+                newConversationId = conversationId;
+                onConversationCreated?.(conversationId);
+              }
+            },
+            onContent: (text) => {
+              streamingContentRef.current += text;
+              setStreamingContent(prev => prev + text);
+            },
+            onComplete: (conversationId) => {
+              console.log('Stream complete:', conversationId);
+            },
+            onDone: () => {
+              console.log('Stream done');
+              
+              // Use ref to get the complete streaming content
+              const finalContent = streamingContentRef.current;
+              
+              // Add the complete assistant message to new messages
+              if (finalContent) {
+                setNewMessages(prev => ({
+                  ...prev,
+                  [newConversationId || 'new']: [...(prev[newConversationId || 'new'] || []), {
+                    role: 'assistant',
+                    content: finalContent,
+                    metadata: {},
+                    created_at: new Date().toISOString(),
+                  }],
+                }));
+              }
+              
+              setStreamingContent("");
+              streamingContentRef.current = "";
+              setIsStreaming(false);
+              
+              // Refetch conversation to get updated data
+              if (newConversationId) {
+                setTimeout(() => refetch(), 500);
+              }
+            },
+            onSummary: (messageCount) => {
+              console.log('Message count:', messageCount);
+            },
+            onError: (error) => {
+              console.error('Stream error:', error);
+              setIsStreaming(false);
+              setStreamingContent("");
+              streamingContentRef.current = "";
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        setIsStreaming(false);
+        setStreamingContent("");
+        streamingContentRef.current = "";
+      }
     }
   };
 
@@ -86,44 +206,73 @@ export function ChatArea({ chatId }: ChatAreaProps) {
           </div>
         ) : (
           <div className="max-w-3xl mx-auto space-y-6 pb-4">
-            {conversationData?.data?.messages && conversationData.data.messages.length > 0 ? (
-              conversationData.data.messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex gap-3 ${
-                    message.role === "user" ? "justify-end" : ""
-                  }`}
-                >
-                  {message.role === "assistant" && (
+            {allMessages.length > 0 ? (
+              <>
+                {allMessages.map((message, index) => (
+                  <div
+                    key={`${message.created_at}-${index}`}
+                    className={`flex gap-3 ${
+                      message.role === "user" ? "justify-end" : ""
+                    }`}
+                  >
+                    {message.role === "assistant" && (
+                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                        <Bot className="h-5 w-5 text-primary-foreground" />
+                      </div>
+                    )}
+                    
+                    <div className={`flex flex-col gap-1 max-w-[70%] ${
+                      message.role === "user" ? "items-end" : ""
+                    }`}>
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === "user" 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-muted"
+                      }`}>
+                        <p className="text-sm whitespace-pre-wrap wrap-break-word">
+                          {message.content}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground px-2">
+                        {formatTime(message.created_at)}
+                      </span>
+                    </div>
+
+                    {message.role === "user" && (
+                      <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {/* Show streaming message or typing indicator */}
+                {isStreaming && (
+                  <div className="flex gap-3">
                     <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                       <Bot className="h-5 w-5 text-primary-foreground" />
                     </div>
-                  )}
-                  
-                  <div className={`flex flex-col gap-1 max-w-[70%] ${
-                    message.role === "user" ? "items-end" : ""
-                  }`}>
-                    <div className={`rounded-2xl px-4 py-3 ${
-                      message.role === "user" 
-                        ? "bg-primary text-primary-foreground" 
-                        : "bg-muted"
-                    }`}>
-                      <p className="text-sm whitespace-pre-wrap wrap-break-word">
-                        {message.content}
-                      </p>
+                    <div className="flex flex-col gap-1 max-w-[70%]">
+                      <div className="rounded-2xl px-4 py-3 bg-muted">
+                        {streamingContent ? (
+                          <p className="text-sm whitespace-pre-wrap wrap-break-word">
+                            {streamingContent}
+                            <span className="inline-block w-1 h-4 bg-foreground ml-1 animate-pulse" />
+                          </p>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-muted-foreground px-2">
-                      {formatTime(message.created_at)}
-                    </span>
                   </div>
-
-                  {message.role === "user" && (
-                    <div className="h-8 w-8 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-white" />
-                    </div>
-                  )}
-                </div>
-              ))
+                )}
+                
+                <div ref={messagesEndRef} />
+              </>
             ) : (
               <div className="text-muted-foreground text-center py-8">
                 No messages yet. Start the conversation!
@@ -143,7 +292,7 @@ export function ChatArea({ chatId }: ChatAreaProps) {
               placeholder="Type your message here..."
               className="flex-1"
             />
-            <Button type="submit" size="icon" disabled={!inputValue.trim()}>
+            <Button type="submit" size="icon" disabled={!inputValue.trim() || isStreaming}>
               <Send className="h-4 w-4" />
             </Button>
           </div>

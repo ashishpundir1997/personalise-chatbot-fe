@@ -93,6 +93,7 @@ export interface UserProfileResponse {
   status: boolean;
   message: string;
   data: {
+    user_id?: string;
     name: string;
     email: string;
   };
@@ -161,6 +162,28 @@ export interface ConversationDetailsResponse {
 
 export interface CreateChatRequest {
   title?: string;
+}
+
+export interface ChatStreamMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface ChatStreamRequest {
+  messages: ChatStreamMessage[];
+  stream: boolean;
+  user_id: string;
+  conversation_id?: string;
+}
+
+export interface ChatStreamEvent {
+  event: 'start' | 'content_block_delta' | 'complete' | 'done' | 'summary';
+  data: {
+    conversation_id?: string;
+    type?: string;
+    text?: string;
+    message_count?: number;
+  };
 }
 
 export interface SendMessageRequest {
