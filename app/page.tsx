@@ -1,9 +1,22 @@
+"use client";
 
+import { useState } from "react";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { ChatSidebar } from "@/components/chat-sidebar";
+import { ChatArea } from "@/components/chat-area";
 
 export default function Home() {
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-     hello ashsih lets start
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <ChatSidebar 
+          currentChatId={currentChatId}
+          onSelectChat={setCurrentChatId}
+        />
+        <ChatArea chatId={currentChatId} />
+      </div>
+    </SidebarProvider>
   );
 }
