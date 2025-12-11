@@ -129,11 +129,34 @@ export interface ConversationsRequest {
 }
 
 export interface Message {
-  id: string;
-  chatId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  createdAt: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface ConversationDetailsRequest {
+  conversation_id: string;
+  include_messages?: boolean;
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface ConversationDetailsResponse {
+  status: boolean;
+  message: string;
+  data: {
+    conversation_id: string;
+    user_id: string;
+    created_at: string;
+    last_activity: string;
+    message_count: number;
+    title: string;
+    messages: Message[];
+    returned_messages: number;
+    has_more_messages: boolean;
+    next_cursor: string | null;
+  };
 }
 
 export interface CreateChatRequest {

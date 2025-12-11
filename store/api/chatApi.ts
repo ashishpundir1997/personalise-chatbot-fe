@@ -1,5 +1,10 @@
 import { baseApi } from './baseApi';
-import type { ConversationsResponse, ConversationsRequest } from '@/lib/types';
+import type { 
+  ConversationsResponse, 
+  ConversationsRequest,
+  ConversationDetailsResponse,
+  ConversationDetailsRequest
+} from '@/lib/types';
 
 export const chatApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -13,9 +18,21 @@ export const chatApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Chat'],
     }),
+    getConversationDetails: builder.query<ConversationDetailsResponse, ConversationDetailsRequest>({
+      query: ({ conversation_id, include_messages = true, limit = 25, cursor }) => ({
+        url: `/chat/conversation/${conversation_id}`,
+        params: {
+          include_messages,
+          limit,
+          ...(cursor && { cursor }),
+        },
+      }),
+      providesTags: (result, error, arg) => [{ type: 'Chat', id: arg.conversation_id }],
+    }),
   }),
 });
 
 export const {
   useGetConversationsQuery,
+  useGetConversationDetailsQuery,
 } = chatApi;
