@@ -103,12 +103,29 @@ export interface UserProfileResponse {
  */
 
 export interface Chat {
-  id: string;
+  conversation_id: string;
+  user_id: string;
+  created_at: string;
+  last_activity: string;
+  message_count: number;
   title: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  messages?: Message[];
+}
+
+export interface ConversationsResponse {
+  status: boolean;
+  message: string;
+  data: {
+    conversations: Chat[];
+    total?: number;
+    limit: number;
+    offset: number;
+    next_offset?: number;
+  };
+}
+
+export interface ConversationsRequest {
+  limit?: number;
+  offset?: number;
 }
 
 export interface Message {

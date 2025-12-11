@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +13,7 @@ import { MessageSquare, Plus, History, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LogoutButton } from "@/components/logout-button";
-import { useGetUserProfileQuery } from "@/store";
+import { useGetUserProfileQuery, useGetConversationsQuery } from "@/store";
 
 interface ChatSidebarProps {
   currentChatId: string | null;
@@ -23,26 +22,38 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
   const { data: userProfile, isLoading: isLoadingProfile } = useGetUserProfileQuery();
-  
-  // Mock chat history - you can replace this with actual data later
-  const [chatHistory] = useState([
-    { id: "1", title: "First conversation", date: "Today" },
-    { id: "2", title: "Project discussion", date: "Yesterday" },
-    { id: "3", title: "Code review", date: "2 days ago" },
-  ]);
+  const { data: conversations, isLoading: isLoadingChats } = useGetConversationsQuery({ limit: 20, offset: 0 });
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInDays === 0) return "Today";
+    if (diffInDays === 1) return "Yesterday";
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Chats
-          </h2>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-            <Plus className="h-4 w-4" />
-          </Button>
+      <SidebarHeader className="border-b p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Chats</h2>
         </div>
+        <Button size="sm" className="w-full">
+          <Plus className="h-4 w-4 mr-2" />
+          New Chat
+        </Button>
       </SidebarHeader>
 
       <SidebarContent className="p-2">
@@ -51,40 +62,75 @@ export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
           Chat History
         </div>
         <Separator className="mb-2" />
-        <SidebarMenu>
-          {chatHistory.map((chat) => (
-            <SidebarMenuItem key={chat.id}>
-              <SidebarMenuButton
-                onClick={() => onSelectChat(chat.id)}
-                isActive={currentChatId === chat.id}
-                className="w-full"
-              >
-                <div className="flex flex-col items-start gap-1 w-full">
-                  <span className="font-medium text-sm truncate w-full">
-                    {chat.title}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {chat.date}
-                  </span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        
+        {isLoadingChats ? (
+          <div className="space-y-2 px-2 py-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse space-y-2 p-2 rounded-md bg-muted/50">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        ) : conversations?.data?.conversations && conversations.data.conversations.length > 0 ? (
+          <SidebarMenu>
+            {conversations.data.conversations.map((chat) => (
+              <SidebarMenuItem key={chat.conversation_id}>
+                <SidebarMenuButton
+                  onClick={() => onSelectChat(chat.conversation_id)}
+                  isActive={currentChatId === chat.conversation_id}
+                  className="w-full h-auto py-3 px-3"
+                >
+                  <div className="flex flex-col items-start gap-1.5 w-full">
+                    <div className="flex items-start justify-between w-full gap-2">
+                      <span className="font-medium text-sm truncate flex-1">
+                        {chat.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                        {formatDate(chat.last_activity)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>{chat.message_count} message{chat.message_count !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        ) : (
+          <div className="px-2 py-8 text-center space-y-2">
+            <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No conversations yet</p>
+            <p className="text-xs text-muted-foreground/70">Start a new chat to begin!</p>
+          </div>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t p-4 space-y-3">
         {/* User Profile */}
-        <div className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <UserIcon className="h-5 w-5 text-primary" />
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-linear-to-r from-muted/50 to-muted/30 hover:from-muted hover:to-muted/50 transition-all">
+          <div className="h-10 w-10 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
+            {isLoadingProfile ? (
+              <div className="h-5 w-5 animate-pulse bg-primary-foreground/20 rounded-full"></div>
+            ) : userProfile?.data ? (
+              <span className="text-lg font-semibold text-primary-foreground">
+                {userProfile.data.name.charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <UserIcon className="h-5 w-5 text-primary-foreground" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             {isLoadingProfile ? (
-              <div className="text-sm text-muted-foreground">Loading...</div>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
+                <div className="h-3 bg-muted rounded w-1/2 animate-pulse"></div>
+              </div>
             ) : userProfile?.data ? (
               <>
-                <p className="text-sm font-medium truncate">{userProfile.data.name}</p>
+                <p className="text-sm font-semibold truncate">{userProfile.data.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{userProfile.data.email}</p>
               </>
             ) : (
@@ -95,10 +141,6 @@ export function ChatSidebar({ currentChatId, onSelectChat }: ChatSidebarProps) {
         
         {/* Logout Button */}
         <LogoutButton />
-        
-        <div className="text-xs text-muted-foreground text-center">
-          <p>Personalise AI Chatbot</p>
-        </div>
       </SidebarFooter>
     </Sidebar>
   );
