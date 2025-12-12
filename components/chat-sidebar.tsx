@@ -15,10 +15,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { MessageSquare, Plus, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
+import { MessageSquare, Plus, User as UserIcon, Trash2, MoreVertical, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LogoutButton } from "@/components/logout-button";
-import { useGetUserProfileQuery, useGetConversationsQuery, useDeleteConversationMutation } from "@/store";
+import { useGetUserProfileQuery, useGetConversationsQuery, useDeleteConversationMutation, useLogoutMutation } from "@/store";
 
 interface ChatSidebarProps {
   currentChatId: string | null;
@@ -30,11 +29,13 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
   const { data: userProfile, isLoading: isLoadingProfile } = useGetUserProfileQuery();
   const { data: conversations, isLoading: isLoadingChats } = useGetConversationsQuery({ limit: 20, offset: 0 });
   const [deleteConversation, { isLoading: isDeleting }] = useDeleteConversationMutation();
-  const [deletePopoverOpen, setDeletePopoverOpen] = useState<string | null>(null);
+  const [logout] = useLogoutMutation();
+  const [optionsPopoverOpen, setOptionsPopoverOpen] = useState<string | null>(null);
+  const [userOptionsOpen, setUserOptionsOpen] = useState(false);
 
-  const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
+  const handleOptionsClick = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
-    setDeletePopoverOpen(conversationId);
+    setOptionsPopoverOpen(conversationId);
   };
 
   const handleDeleteConfirm = async (conversationId: string) => {
@@ -46,15 +47,30 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
         onNewChat();
       }
       
-      setDeletePopoverOpen(null);
+      setOptionsPopoverOpen(null);
     } catch (error) {
       console.error('Failed to delete conversation:', error);
       alert('Failed to delete conversation. Please try again.');
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeletePopoverOpen(null);
+  const handleLogout = async () => {
+    try {
+      await logout().unwrap();
+      console.log("Logout successful");
+      window.location.href = "/auth";
+    } catch (err: unknown) {
+      console.error("Logout error:", err);
+      alert('Logout failed. Please try again.');
+    } finally {
+      setUserOptionsOpen(false);
+    }
+  };
+
+  // Capitalize first letter of title
+  const capitalizeTitle = (title: string) => {
+    if (!title) return title;
+    return title.charAt(0).toUpperCase() + title.slice(1);
   };
 
   // Format date for display
@@ -107,11 +123,11 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
                   <SidebarMenuButton
                     onClick={() => onSelectChat(chat.conversation_id)}
                     isActive={currentChatId === chat.conversation_id}
-                    className="w-full h-auto py-3 px-3 pr-10"
+                    className="w-full h-auto py-3 px-3 pr-10 cursor-pointer hover:bg-accent"
                   >
                     <div className="flex items-start justify-between w-full gap-2">
                       <span className="font-medium text-sm truncate flex-1">
-                        {chat.title}
+                        {capitalizeTitle(chat.title)}
                       </span>
                       <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                         {formatDate(chat.last_activity)}
@@ -120,10 +136,10 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
                   </SidebarMenuButton>
                   
                   <Popover
-                    open={deletePopoverOpen === chat.conversation_id}
+                    open={optionsPopoverOpen === chat.conversation_id}
                     onOpenChange={(open) => {
                       if (!open) {
-                        setDeletePopoverOpen(null);
+                        setOptionsPopoverOpen(null);
                       }
                     }}
                   >
@@ -131,44 +147,22 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => handleDeleteClick(e, chat.conversation_id)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
-                        disabled={isDeleting}
+                        onClick={(e) => handleOptionsClick(e, chat.conversation_id)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 hover:bg-accent z-10 cursor-pointer"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80" align="end">
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                            <AlertTriangle className="h-5 w-5 text-destructive" />
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <h4 className="text-sm font-semibold">Delete Conversation</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Are you sure you want to delete this conversation? This action cannot be undone.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDeleteCancel}
-                            disabled={isDeleting}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteConfirm(chat.conversation_id)}
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? "Deleting..." : "Delete"}
-                          </Button>
-                        </div>
+                    <PopoverContent className="w-48 p-0" align="end">
+                      <div className="py-1">
+                        <button
+                          onClick={() => handleDeleteConfirm(chat.conversation_id)}
+                          disabled={isDeleting}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>{isDeleting ? "Deleting..." : "Delete conversation"}</span>
+                        </button>
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -187,37 +181,63 @@ export function ChatSidebar({ currentChatId, onSelectChat, onNewChat }: ChatSide
 
       <SidebarFooter className="border-t p-4 space-y-3">
         {/* User Profile */}
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-linear-to-r from-muted/50 to-muted/30 hover:from-muted hover:to-muted/50 transition-all">
-          <div className="h-10 w-10 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
-            {isLoadingProfile ? (
-              <div className="h-5 w-5 animate-pulse bg-primary-foreground/20 rounded-full"></div>
-            ) : userProfile?.data ? (
-              <span className="text-lg font-semibold text-primary-foreground">
-                {userProfile.data.name.charAt(0).toUpperCase()}
-              </span>
-            ) : (
-              <UserIcon className="h-5 w-5 text-primary-foreground" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            {isLoadingProfile ? (
-              <div className="space-y-2">
-                <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
-                <div className="h-3 bg-muted rounded w-1/2 animate-pulse"></div>
-              </div>
-            ) : userProfile?.data ? (
-              <>
-                <p className="text-sm font-semibold truncate">{userProfile.data.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{userProfile.data.email}</p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">User</p>
-            )}
+        <div className="relative group/user">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-linear-to-r from-muted/50 to-muted/30 hover:from-muted hover:to-muted/50 transition-all cursor-pointer">
+            <div className="h-10 w-10 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center shadow-md">
+              {isLoadingProfile ? (
+                <div className="h-5 w-5 animate-pulse bg-primary-foreground/20 rounded-full"></div>
+              ) : userProfile?.data ? (
+                <span className="text-lg font-semibold text-primary-foreground">
+                  {userProfile.data.name.charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <UserIcon className="h-5 w-5 text-primary-foreground" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              {isLoadingProfile ? (
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
+                  <div className="h-3 bg-muted rounded w-1/2 animate-pulse"></div>
+                </div>
+              ) : userProfile?.data ? (
+                <>
+                  <p className="text-sm font-semibold truncate">{userProfile.data.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{userProfile.data.email}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">User</p>
+              )}
+            </div>
+            
+            <Popover
+              open={userOptionsOpen}
+              onOpenChange={setUserOptionsOpen}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-accent cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-0" align="end">
+                <div className="py-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-        
-        {/* Logout Button */}
-        <LogoutButton />
       </SidebarFooter>
     </Sidebar>
   );
